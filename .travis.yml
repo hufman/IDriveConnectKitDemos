@@ -1,0 +1,14 @@
+language: android
+
+android:
+  components:
+    - extra-google-m2repository
+    - extra-android-m2repository
+    - platform-tools
+    - build-tools-27.0.3
+    - android-26
+
+script:
+  - echo -en 'travis_fold:start:script.gradle_build\\r'
+  - cd carinfo && bash ../gradlew build
+  - echo -en 'travis_fold:end:script.gradle_build\\r'
