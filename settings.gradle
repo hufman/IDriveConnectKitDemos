@@ -1,3 +1,3 @@
-include ':carinfo'
+include ':carinfo', ':screenmirroring'
 include ':IDriveConnectKit'
 include ':IDriveConnectKitAndroid'
