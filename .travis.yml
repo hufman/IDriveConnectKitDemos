@@ -9,6 +9,9 @@ android:
     - android-26
 
 script:
-  - echo -en 'travis_fold:start:script.gradle_build\\r'
-  - cd carinfo && bash ../gradlew build
-  - echo -en 'travis_fold:end:script.gradle_build\\r'
+  - echo -en 'travis_fold:start:script.gradle_build_carinfo\\r'
+  - cd carinfo && bash ../gradlew build; cd ..
+  - echo -en 'travis_fold:end:script.gradle_build_carinfo\\r'
+  - echo -en 'travis_fold:start:script.gradle_build_screenmirroring\\r'
+  - cd screenmirroring && bash ../gradlew build; cd ..
+  - echo -en 'travis_fold:end:script.gradle_build_screenmirroring\\r'
