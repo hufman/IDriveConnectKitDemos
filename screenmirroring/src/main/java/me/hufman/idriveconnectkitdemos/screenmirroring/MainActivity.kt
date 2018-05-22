@@ -8,7 +8,6 @@ import android.graphics.PixelFormat
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.AsyncTask
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -25,7 +24,7 @@ import me.hufman.idriveconnectionkit.rhmi.RHMIApplicationEtch
 import me.hufman.idriveconnectionkit.rhmi.RHMIComponent
 import me.hufman.idriveconnectionkit.rhmi.RHMIState
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
 	private val TAG = "IdriveScreenMirror"
 	private val PROJECTION_PERMISSION_CODE = 0x0535
