@@ -6,8 +6,9 @@ import me.hufman.idriveconnectionkit.rhmi.RHMIComponent
 import me.hufman.idriveconnectionkit.rhmi.RHMIState
 
 object Data {
-	var projectionPermission: Intent? = null
-	var mirroringApp: RHMIApplication? = null
-	var mirroringWindow: RHMIState? = null
-	var mirroringAppImage: RHMIComponent.Image? = null
+	@Volatile var projectionPermission: Intent? = null
+	@Volatile var mirroringApp: RHMIApplication? = null
+	@Volatile var mirroringWindow: RHMIState? = null
+	@Volatile var mirroringAppImage: RHMIComponent.Image? = null
+	@Volatile var carappFocused = false
 }

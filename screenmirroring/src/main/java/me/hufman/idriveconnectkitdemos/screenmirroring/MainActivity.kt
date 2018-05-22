@@ -28,7 +28,6 @@ class MainActivity : Activity() {
 
 	private val TAG = "IdriveScreenMirror"
 	private val PROJECTION_PERMISSION_CODE = 0x0535
-	private var carappFocused = false
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
@@ -43,26 +42,27 @@ class MainActivity : Activity() {
 				SecurityService.subscribe(Runnable {
 					findViewById<TextView>(R.id.textView).text = "Connected to a " + IDriveConnectionListener.brand + "\n" +
 							"Using security services of " + SecurityService.activeSecurityConnections.keys.firstOrNull()
-					InitCarApp().execute()
 				})
 			} else {
 				findViewById<TextView>(R.id.textView).text = "Not connected"
 				Data.mirroringApp = null
 				Data.mirroringAppImage = null
 			}
+			combinedCallback()
 		}
 		IDriveConnectionListener.callback?.run()
 
 		// update the discovered list of CarAPI apps
 		val discoveryCallback = object: CarAPIDiscovery.DiscoveryCallback {
 			override fun discovered(app: CarAPIClient) {
+				redraw()
+				combinedCallback()
+			}
+			fun redraw() {
 				val apps = CarAPIDiscovery.discoveredApps.values.map {
 					it.title
 				}
-				var output = ""
-				if (apps.size == 0) {
-					output = "Found 0 BMW Connected Ready apps!\nPlease install Spotify from the Play Store"
-				}
+				val output: String
 				if (!CarAPIDiscovery.discoveredApps.containsKey("com.spotify.music")) {
 					output = "Spotify is required to be installed for this demo app!"
 				} else {
@@ -71,7 +71,17 @@ class MainActivity : Activity() {
 				findViewById<TextView>(R.id.carapiList).text = output
 			}
 		}
+		discoveryCallback.redraw()
 		CarAPIDiscovery.discoverApps(this, discoveryCallback)
+	}
+
+	/**
+	 * Check whether the connection requirements are met, and then connect to car
+	 */
+	fun combinedCallback() {
+		if (CarAPIDiscovery.discoveredApps.containsKey("com.spotify.music") &&
+				IDriveConnectionListener.isConnected)
+			InitCarApp().execute()
 	}
 
 	/**
@@ -101,10 +111,13 @@ class MainActivity : Activity() {
 	 * If so, begin recording, or prompt the user again
 	 */
 	fun onCarappFocus() {
-		carappFocused = true
+		Data.carappFocused = true
+		Log.i(TAG, "User selected carapp of mirroring")
 		if (Data.mirroringApp != null && Data.projectionPermission == null) {
+			Log.i(TAG, "User must grant mirroring permission on the phone first")
 			promptForMirroringPermission()
 		} else if (Data.mirroringApp != null && Data.projectionPermission != null) {
+			Log.i(TAG, "Still have permission from earlier, start back up")
 			startScreenMirroringService()
 		}
 	}
@@ -113,12 +126,16 @@ class MainActivity : Activity() {
 	 * When the user exits the app, stop mirroring
 	 */
 	fun onCarappBlur() {
-		carappFocused = false
+		Log.i(TAG, "User left carapp of mirroring")
+		Data.carappFocused = false
 		stopScreenMirroringService()
 	}
 
 	fun promptForMirroringPermission() {
-		val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+		val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
+		if (Data.projectionPermission != null) {
+			Log.w(TAG, "Should we prompt again, if we already have permission?")
+		}
 		if (projectionManager != null && Data.projectionPermission == null) {
 			startActivityForResult(projectionManager.createScreenCaptureIntent(), PROJECTION_PERMISSION_CODE)
 		}
@@ -131,8 +148,10 @@ class MainActivity : Activity() {
 				Data.projectionPermission = data.clone() as Intent
 
 				// now start the capture service
-				if (carappFocused)
+				if (Data.carappFocused) {
+					Log.i(TAG, "Since we are focused in the car, start mirroring now")
 					startScreenMirroringService()
+				}
 			} else {
 				Log.i(TAG, "User did not grant screenshot access")
 			}
@@ -210,6 +229,12 @@ class MainActivity : Activity() {
 				val response = SecurityService.signChallenge(context.packageName, "IdriveDemo", challenge)
 				car.sas_login(response)
 
+				// the rest of the carapp setup will probably work, so
+				// prompt user to grant screen mirroring permission
+				runOnUiThread({
+					promptForMirroringPermission()
+				})
+
 				// create the car app
 				val rhmiHandle = car.rhmi_create(null, BMWRemoting.RHMIMetaData(context.packageName, BMWRemoting.VersionInfo(0, 0, 1), context.packageName, "BMW Group"))
 				car.rhmi_addHmiEventHandler(rhmiHandle, "Callback method", -1, -1)
@@ -239,10 +264,6 @@ class MainActivity : Activity() {
 				Data.mirroringWindow = state
 				Data.mirroringAppImage = imageComponent
 
-				// prompt user to grant screen mirroring permission
-				runOnUiThread({
-					promptForMirroringPermission()
-				})
 			} catch (e: Exception) {
 				reportError(e)
 			}

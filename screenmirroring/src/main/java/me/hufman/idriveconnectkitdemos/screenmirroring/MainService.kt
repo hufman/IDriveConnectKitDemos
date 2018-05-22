@@ -72,6 +72,7 @@ class MainService: Service() {
 			}
 		} else {
 			Log.e(TAG, "Screen mirroring permission not granted")
+			Data.projectionPermission = null
 		}
 	}
 
@@ -80,6 +81,7 @@ class MainService: Service() {
 	 * parameters.
 	 */
 	private fun handleActionStop() {
+		Log.i(TAG, "Shutting down mirroring service")
 		synchronized(MainService::class.java) {
 			stopThread()
 			stopNotification()

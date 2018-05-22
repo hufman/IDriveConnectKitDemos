@@ -43,10 +43,10 @@ class ScreenMirroringThread(val source: ImageReader, val carImage: RHMIModel.RaI
 				//val bmp = Bitmap.createBitmap(720, 480, Bitmap.Config.RGB_565)
 				//bmp.eraseColor(0x552277)
 				//setPicture(bmp)
-				Thread.sleep(50)
+				Thread.sleep(10)
 				continue
 			}
-			Log.i(TAG, "Image received from screen mirror!")
+			//Log.i(TAG, "Image received from screen mirror!")
 			val planes = image.planes
 			val buffer = planes[0].buffer
 			val padding = planes[0].rowStride - planes[0].pixelStride * source.width
