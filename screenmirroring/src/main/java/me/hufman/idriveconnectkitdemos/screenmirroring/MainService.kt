@@ -60,7 +60,7 @@ class MainService: Service() {
 			val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 			val projection = projectionManager.getMediaProjection(RESULT_OK, Data.projectionPermission)
 			Data.projectionPermission = null
-			val imageCapture = ImageReader.newInstance(720, 440, ImageFormat.RGB_565, 1)
+			val imageCapture = ImageReader.newInstance(720, 440, 1, 1)
 			val flags = DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR or DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION
 			val virtualDisplay = projection.createVirtualDisplay("idrive-screen-mirror", imageCapture.width, imageCapture.height, 140, flags, imageCapture.surface, null, null)
 			synchronized(MainService::class.java) {

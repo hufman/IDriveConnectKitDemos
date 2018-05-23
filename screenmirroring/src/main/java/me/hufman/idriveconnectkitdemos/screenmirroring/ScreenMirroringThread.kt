@@ -2,6 +2,7 @@ package me.hufman.idriveconnectkitdemos.screenmirroring
 
 import android.graphics.Bitmap
 import android.graphics.ImageFormat
+import android.media.Image
 import android.media.ImageReader
 import android.util.Log
 import me.hufman.idriveconnectionkit.rhmi.RHMIModel
@@ -27,6 +28,9 @@ class ScreenMirroringThread(val source: ImageReader, val carImage: RHMIModel.RaI
 	private fun getBitmapConfig(imageFormat: Int): Bitmap.Config? {
 		return when (imageFormat) {
 			ImageFormat.RGB_565 -> Bitmap.Config.RGB_565
+			ImageFormat.FLEX_RGBA_8888 -> Bitmap.Config.ARGB_8888
+			1 -> Bitmap.Config.ARGB_8888
+			ImageFormat.FLEX_RGB_888 -> Bitmap.Config.ARGB_8888
 			else -> null
 		}
 	}
