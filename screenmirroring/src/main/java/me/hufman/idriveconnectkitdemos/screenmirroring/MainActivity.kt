@@ -42,6 +42,7 @@ class MainActivity : Activity() {
 				SecurityService.subscribe(Runnable {
 					findViewById<TextView>(R.id.textView).text = "Connected to a " + IDriveConnectionListener.brand + "\n" +
 							"Using security services of " + SecurityService.activeSecurityConnections.keys.firstOrNull()
+					combinedCallback()
 				})
 			} else {
 				findViewById<TextView>(R.id.textView).text = "Not connected"
@@ -80,7 +81,7 @@ class MainActivity : Activity() {
 	 */
 	fun combinedCallback() {
 		if (CarAPIDiscovery.discoveredApps.containsKey("com.spotify.music") &&
-				IDriveConnectionListener.isConnected)
+				IDriveConnectionListener.isConnected && SecurityService.isConnected())
 			InitCarApp().execute()
 	}
 

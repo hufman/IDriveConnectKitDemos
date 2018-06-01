@@ -27,14 +27,14 @@ class MainActivity : Activity() {
                 SecurityService.subscribe(Runnable {
                     findViewById<TextView>(R.id.textView).text = "Connected to a " + IDriveConnectionListener.brand + "\n" +
                             "Using security services of " + SecurityService.activeSecurityConnections.keys.firstOrNull()
-                    GetInfo().execute()
+                    combinedCallback()
                 })
             } else {
                 findViewById<TextView>(R.id.textView).text = "Not connected"
                 carData.clear()
             }
         }
-        if (IDriveConnectionListener.isConnected) IDriveConnectionListener.callback?.run()
+        IDriveConnectionListener.callback?.run()
 
         // update the discovered list of CarAPI apps
         val discoveryCallback = object: CarAPIDiscovery.DiscoveryCallback {
@@ -48,12 +48,18 @@ class MainActivity : Activity() {
                     output += "\nTry installing Spotify or iHeartRadio from the Play Store"
                 }
                 findViewById<TextView>(R.id.carapiList).text = output
+                combinedCallback()
             }
 
         }
         CarAPIDiscovery.discoverApps(this, discoveryCallback)
     }
 
+    fun combinedCallback() {
+        if (IDriveConnectionListener.isConnected && SecurityService.isConnected() && CarAPIDiscovery.discoveredApps.isNotEmpty()) {
+            GetInfo().execute()
+        }
+    }
     /**
      * Implements a callback for the car to update the app with data
      * Saves any incoming data to the carData hash and updates the view
