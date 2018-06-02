@@ -20,7 +20,7 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 
 
-class MainService: Service() {
+class MainService : Service() {
 
 	companion object {
 		const val ACTION_START = "me.hufman.screenmirroring.action.START"
@@ -145,5 +145,5 @@ class MainService: Service() {
 			orientationChanger = null
 		}
 	}
-	*/
+	 */
 }

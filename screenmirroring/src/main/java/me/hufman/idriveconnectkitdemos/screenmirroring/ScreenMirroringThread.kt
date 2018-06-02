@@ -9,7 +9,7 @@ import me.hufman.idriveconnectionkit.rhmi.RHMIModel
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Semaphore
 
-class ScreenMirroringThread(val source: ImageReader, val carImage: RHMIModel.RaImageModel): Runnable {
+class ScreenMirroringThread(val source: ImageReader, val carImage: RHMIModel.RaImageModel) : Runnable {
 	var paused = false
 		set(value) {
 			field = value
@@ -34,8 +34,9 @@ class ScreenMirroringThread(val source: ImageReader, val carImage: RHMIModel.RaI
 			else -> null
 		}
 	}
+
 	override fun run() {
-		var bmp:Bitmap? = null
+		var bmp: Bitmap? = null
 		while (connected) {
 			//ready.acquire()  // block until we're ready to show another frame
 			if (!connected) continue

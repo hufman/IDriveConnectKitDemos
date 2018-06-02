@@ -54,11 +54,12 @@ class MainActivity : Activity() {
 		IDriveConnectionListener.callback?.run()
 
 		// update the discovered list of CarAPI apps
-		val discoveryCallback = object: CarAPIDiscovery.DiscoveryCallback {
+		val discoveryCallback = object : CarAPIDiscovery.DiscoveryCallback {
 			override fun discovered(app: CarAPIClient) {
 				redraw()
 				combinedCallback()
 			}
+
 			fun redraw() {
 				val apps = CarAPIDiscovery.discoveredApps.values.map {
 					it.title
@@ -89,7 +90,7 @@ class MainActivity : Activity() {
 	 * Implements a callback for the car to update the app with data
 	 * Saves any incoming data to the carData hash and updates the view
 	 */
-	inner class HmiEventListener: BaseBMWRemotingClient() {
+	inner class HmiEventListener : BaseBMWRemotingClient() {
 		var server: BMWRemotingServer? = null
 		override fun rhmi_onActionEvent(handle: Int?, ident: String?, actionId: Int?, args: MutableMap<*, *>?) {
 			Log.w(TAG, "Received rhmi_onActionEvent: handle=$handle ident=$ident actionId=$actionId")
@@ -188,7 +189,7 @@ class MainActivity : Activity() {
 	/**
 	 * Running as a separate thread, connect to the car to make sure it works
 	 */
-	inner class InitCarApp: AsyncTask<Unit, Void, Unit>() {
+	inner class InitCarApp : AsyncTask<Unit, Void, Unit>() {
 		override fun doInBackground(vararg p0: Unit?) {
 			val context = this@MainActivity
 
@@ -208,7 +209,7 @@ class MainActivity : Activity() {
 					return
 				}
 				val cert = CertMangling.mergeBMWCert(Utils.loadInputStream(certInputStream), SecurityService.fetchBMWCerts())
-				Log.i(TAG, "Loaded cert from " + app.id +" of length " + cert.size)
+				Log.i(TAG, "Loaded cert from " + app.id + " of length " + cert.size)
 				val uilayout = app.getUiDescription(context)?.createInputStream()?.readEntireStream()
 				val iconpack = app.getImagesDB(context, "common")?.createInputStream()?.readEntireStream()
 				if (uilayout == null || iconpack == null) {
@@ -248,7 +249,7 @@ class MainActivity : Activity() {
 				val rhmiApp = RHMIApplicationEtch(car, rhmiHandle)
 				rhmiApp.loadFromXML(uilayout)
 				// find a state with an image, which seems to be #12
-				var state = rhmiApp.states.values.filterIsInstance<RHMIState.PlainState>().first {it.componentsList.filterIsInstance<RHMIComponent.Image>().isNotEmpty()}
+				var state = rhmiApp.states.values.filterIsInstance<RHMIState.PlainState>().first { it.componentsList.filterIsInstance<RHMIComponent.Image>().isNotEmpty() }
 				rhmiApp.components.values.filterIsInstance<RHMIComponent.EntryButton>().forEach {
 					it.getAction()?.asCombinedAction()?.hmiAction?.getTargetModel()?.asRaIntModel()?.value = state.id
 				}
