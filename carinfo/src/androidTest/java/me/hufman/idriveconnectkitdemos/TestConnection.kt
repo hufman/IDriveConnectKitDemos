@@ -50,13 +50,13 @@ class TestConnection {
 		intent.putExtra("EXTRA_INSTANCE_ID ", 16)
 		appContext.sendBroadcast(intent)
 
-		mockServer.waitForLogin.await(10, TimeUnit.SECONDS)
+		mockServer.waitForLogin.await(60, TimeUnit.SECONDS)
 		// check that it was connected
 		verify(mockServer).sas_certificate(ArgumentMatchers.any(ByteArray::class.java))
 		verify(mockServer).sas_login(ArgumentMatchers.any(ByteArray::class.java))
 
 		// check for cds listeners
-		mockServer.expected_cdsEventHandlers.await(10, TimeUnit.SECONDS)
+		mockServer.expected_cdsEventHandlers.await(60, TimeUnit.SECONDS)
 		assertEquals(4, mockServer.cdsEventHandlers.size)
 		verify(mockServer).cds_addPropertyChangedEventHandler(eq(1), eq("vehicle.VIN"), eq("83"), ArgumentMatchers.anyInt())
 		verify(mockServer).cds_addPropertyChangedEventHandler(eq(1), eq("driving.gear"), eq("37"), ArgumentMatchers.anyInt())

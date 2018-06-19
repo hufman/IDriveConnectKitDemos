@@ -6,12 +6,41 @@ android:
     - extra-android-m2repository
     - platform-tools
     - build-tools-27.0.3
+    - android-24
     - android-26
+    - sys-img-armeabi-v7a-android-24
+
+# Emulator Management: Create, Start and Wait
+before_script:
+  - echo no | android create avd --force -n test -t android-24 --abi armeabi-v7a
+  - emulator -avd test -no-window &
+  - android-wait-for-emulator
+  - adb shell input keyevent 82 &
+  # install Mini Connected
+  - wget --inet4-only https://hufman.me/MINI_Connected_Classic_v1.1.3_apkpure.com.apk -O connected.apk
+  - adb install connected.apk
+  # install an example CarAPI app
+  - wget --inet4-only https://hufman.me/iHeartRadio_for_Auto_v1.12.2_apkpure.com.apk -O iheartradio.apk
+  - adb install iheartradio.apk
+  # try to start the CarAPI app
+  - adb shell am broadcast -a "com.bmwgroup.connected.car.app.action.CONNECTED_APP_INSTALLED" --include-stopped-packages
+  # install a report about xunit
+  - pip install --user xunitparser
 
 script:
   - echo -en 'travis_fold:start:script.gradle_build_carinfo\\r'
-  - cd carinfo && bash ../gradlew build; cd ..
+  - cd carinfo && bash ../gradlew build
+  - cd "$TRAVIS_BUILD_DIR"
   - echo -en 'travis_fold:end:script.gradle_build_carinfo\\r'
   - echo -en 'travis_fold:start:script.gradle_build_screenmirroring\\r'
-  - cd screenmirroring && bash ../gradlew build; cd ..
+  - cd screenmirroring && bash ../gradlew build
+  - cd "$TRAVIS_BUILD_DIR"
   - echo -en 'travis_fold:end:script.gradle_build_screenmirroring\\r'
+
+  - adb logcat -c
+  - echo -en 'travis_fold:start:script.gradle_connectedCheck_carinfo\\r'
+  - cd carinfo && bash ../gradlew connectedCheck || (adb logcat -d && false)
+  - cd "$TRAVIS_BUILD_DIR"
+  - echo -en 'travis_fold:end:script.gradle_connectedCheck_carinfo\\r'
+
+  - python IDriveConnectKitAndroid/buildtools/xunit_summary.py carinfo/build/outputs/androidTest-results/connected/*.xml
