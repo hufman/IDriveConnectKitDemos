@@ -13,6 +13,7 @@ import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.LinearLayout
 import android.widget.TextView
 import de.bmw.idrive.BMWRemoting
@@ -22,7 +23,9 @@ import me.hufman.idriveconnectionkit.IDriveConnection
 import me.hufman.idriveconnectionkit.android.*
 import me.hufman.idriveconnectionkit.rhmi.RHMIApplicationEtch
 import me.hufman.idriveconnectionkit.rhmi.RHMIComponent
+import me.hufman.idriveconnectionkit.rhmi.RHMIEvent
 import me.hufman.idriveconnectionkit.rhmi.RHMIState
+import java.util.*
 
 class MainActivity : Activity() {
 
@@ -93,12 +96,44 @@ class MainActivity : Activity() {
 	inner class HmiEventListener : BaseBMWRemotingClient() {
 		var server: BMWRemotingServer? = null
 		override fun rhmi_onActionEvent(handle: Int?, ident: String?, actionId: Int?, args: MutableMap<*, *>?) {
-			Log.w(TAG, "Received rhmi_onActionEvent: handle=$handle ident=$ident actionId=$actionId")
+			logMessage("Received rhmi_onActionEvent: handle=$handle ident=$ident actionId=$actionId")
 			server?.rhmi_ackActionEvent(handle, actionId, 1, true)
+
+			val mirroringWindow = Data.mirroringWindow
+			if (mirroringWindow == null) {
+				Log.w(TAG, "Could not find window")
+				return
+			}
+			// find which way was focused
+			val actionIds = mirroringWindow.asToolbarState()?.toolbarComponentsList?.map {
+				it.asToolbarButton()?.selectAction ?: 0
+			} ?: LinkedList()
+			val toolbarIndex = actionIds.indexOf(actionId)
+			if (toolbarIndex in 0..2) Data.changeInputFocus(-1)
+			if (toolbarIndex in 4..7) Data.changeInputFocus(1)
+			// check instead to see if the user pressed the button
+			if (actionId == mirroringWindow.asToolbarState()?.toolbarComponentsList?.get(3)?.asToolbarButton()?.getAction()?.asCombinedAction()?.raAction?.id) {
+				// need to call performAction inside MirrorAccessibilityService
+				//inputWidget.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK.id)
+				Log.i(TAG, "Sending click command to accessibility service")
+				val click = Intent(applicationContext, MirrorAccessibilityService::class.java)
+				click.action = MirrorAccessibilityService.ACTION
+				click.putExtra("EXTRA_COMMAND", "CLICK")
+				startService(click)
+			}
+			// set the focus back to the center of the list
+			val event = Data.mirroringApp?.events?.values?.filterIsInstance<RHMIEvent.FocusEvent>()?.firstOrNull()
+			if (event == null) {
+				Log.w(TAG, "Failed to locate FocusEvent")
+				return
+			}
+			val toolbarButtonId = mirroringWindow.asToolbarState()!!.toolbarComponentsList!![3]!!.id
+			event.getTargetModel()!!.asRaDataModel()!!.value = (toolbarButtonId!!.toString())
+			event.triggerEvent(mapOf(0 to toolbarButtonId))
 		}
 
 		override fun rhmi_onHmiEvent(handle: Int?, ident: String?, componentId: Int?, eventId: Int?, args: MutableMap<*, *>?) {
-			Log.w(TAG, "Received rhmi_onHmiEvent: handle=$handle ident=$ident componentId=$componentId eventId=$eventId")
+			logMessage("Received rhmi_onHmiEvent: handle=$handle ident=$ident componentId=$componentId eventId=$eventId")
 			if (componentId == Data.mirroringWindow?.id && eventId == 11 && args?.get(23.toByte()) == true) {
 				onCarappFocus()
 			}
@@ -170,6 +205,13 @@ class MainActivity : Activity() {
 		val stopIntent = Intent(applicationContext, MainService::class.java)
 		stopIntent.action = MainService.ACTION_STOP
 		startService(stopIntent)
+	}
+
+	fun logMessage(message: String) {
+		runOnUiThread({
+			Log.i(TAG, message)
+			findViewById<TextView>(R.id.carData).append("\n"+message)
+		})
 	}
 
 	fun reportError(message: String) {
@@ -249,9 +291,10 @@ class MainActivity : Activity() {
 				val rhmiApp = RHMIApplicationEtch(car, rhmiHandle)
 				rhmiApp.loadFromXML(uilayout)
 				// find a state with an image, which seems to be #12
-				var state = rhmiApp.states.values.filterIsInstance<RHMIState.PlainState>().first { it.componentsList.filterIsInstance<RHMIComponent.Image>().isNotEmpty() }
+				var state = rhmiApp.states.values.filterIsInstance<RHMIState.ToolbarState>().first { it.componentsList.filterIsInstance<RHMIComponent.Image>().size == 1 }
 				rhmiApp.components.values.filterIsInstance<RHMIComponent.EntryButton>().forEach {
 					it.getAction()?.asCombinedAction()?.hmiAction?.getTargetModel()?.asRaIntModel()?.value = state.id
+					it.getImageModel()?.asImageIdModel()?.imageId = 1010
 				}
 				state.componentsList.forEach {
 					it.setVisible(false)
@@ -260,6 +303,15 @@ class MainActivity : Activity() {
 				imageComponent.setProperty(9, 720)  // width
 				imageComponent.setProperty(10, 480) // height
 				imageComponent.setVisible(true)
+				state.toolbarComponentsList.forEach {
+					it.asToolbarButton()?.setVisible(true)
+					it.asToolbarButton()?.setSelectable(true)
+					it.asToolbarButton()?.setEnabled(true)
+					it.asToolbarButton()?.getImageModel()?.asImageIdModel()?.imageId = 0
+					it.asToolbarButton()?.getTooltipModel()?.asRaDataModel()?.value = ""
+				}
+				state.toolbarComponentsList.firstOrNull()?.setVisible(false)
+				state.toolbarComponentsList.lastOrNull()?.setVisible(false)
 
 				// save the app to signal it is connected and ready
 				Data.mirroringApp = rhmiApp

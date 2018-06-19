@@ -2,4 +2,5 @@
     <string name="app_name">Screen Mirroring</string>
     <string name="notification_description">Screen Mirroring to IDrive</string>
     <string name="notification_title">IDrive Demo</string>
+    <string name="accessibility_description">IDrive Screen Mirroring Input</string>
 </resources>
