@@ -81,7 +81,7 @@ class MainActivity : Activity() {
 	 * Check whether the connection requirements are met, and then connect to car
 	 */
 	fun combinedCallback() {
-		if (CarAPIDiscovery.discoveredApps.containsKey("com.spotify.music") &&
+		if (CarAPIDiscovery.discoveredApps.values.any { it.getUiDescription(this) != null} &&
 				IDriveConnectionListener.isConnected && SecurityService.isConnected())
 			InitCarApp().execute()
 	}
@@ -198,20 +198,20 @@ class MainActivity : Activity() {
 				return
 			}
 			try {
-				val app = CarAPIDiscovery.discoveredApps["com.spotify.music"]
+				val app = CarAPIDiscovery.discoveredApps.values.firstOrNull { it.getUiDescription(this@MainActivity) != null }
 				if (app == null) {
 					reportError("Could not locate Spotify app")
 					return
 				}
-				val certInputStream = app.getAppCertificate(context)?.createInputStream()
+				val certInputStream = app.getAppCertificate(context)
 				if (certInputStream == null) {
 					reportError("Failed to load app cert from CarAPI app " + app.title)
 					return
 				}
 				val cert = CertMangling.mergeBMWCert(Utils.loadInputStream(certInputStream), SecurityService.fetchBMWCerts())
 				Log.i(TAG, "Loaded cert from " + app.id + " of length " + cert.size)
-				val uilayout = app.getUiDescription(context)?.createInputStream()?.readEntireStream()
-				val iconpack = app.getImagesDB(context, "common")?.createInputStream()?.readEntireStream()
+				val uilayout = app.getUiDescription(context)?.readEntireStream()
+				val iconpack = app.getImagesDB(context, "common")?.readEntireStream()
 				if (uilayout == null || iconpack == null) {
 					reportError("Failed to load app resources from CarAPI app " + app.title)
 					return

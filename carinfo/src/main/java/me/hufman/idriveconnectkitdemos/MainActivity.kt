@@ -50,7 +50,6 @@ class MainActivity : Activity() {
 				findViewById<TextView>(R.id.carapiList).text = output
 				combinedCallback()
 			}
-
 		}
 		CarAPIDiscovery.discoverApps(this, discoveryCallback)
 	}
@@ -85,7 +84,7 @@ class MainActivity : Activity() {
 			try {
 				val app = CarAPIDiscovery.discoveredApps["com.spotify.music"]
 						?: CarAPIDiscovery.discoveredApps.values.first()
-				val certInputStream = app.getAppCertificate(context)?.createInputStream()
+				val certInputStream = app.getAppCertificate(context)
 				if (certInputStream == null) {
 					Log.e(TAG, "Failed to load app cert from CarAPI app " + app.title)
 					return

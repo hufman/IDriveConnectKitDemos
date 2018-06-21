@@ -43,4 +43,11 @@ script:
   - cd "$TRAVIS_BUILD_DIR"
   - echo -en 'travis_fold:end:script.gradle_connectedCheck_carinfo\\r'
 
+  - adb logcat -c
+  - echo -en 'travis_fold:start:script.gradle_connectedCheck_screenmirroring\\r'
+  - cd screenmirroring && bash ../gradlew connectedCheck || (adb logcat -d && false)
+  - cd "$TRAVIS_BUILD_DIR"
+  - echo -en 'travis_fold:end:script.gradle_connectedCheck_screenmirroring\\r'
+
   - python IDriveConnectKitAndroid/buildtools/xunit_summary.py carinfo/build/outputs/androidTest-results/connected/*.xml
+  - python IDriveConnectKitAndroid/buildtools/xunit_summary.py screenmirroring/build/outputs/androidTest-results/connected/*.xml
