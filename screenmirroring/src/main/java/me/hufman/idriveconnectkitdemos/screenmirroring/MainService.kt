@@ -13,6 +13,7 @@ import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
+import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.provider.Settings
 import android.view.View
@@ -32,6 +33,7 @@ class MainService : Service() {
 
 	private var backgroundThread: ScreenMirroringThread? = null
 	private var foregroundNotification: Notification? = null
+	private var projection: MediaProjection? = null
 	private var imageCapture: ImageReader? = null
 	private var virtualDisplay: VirtualDisplay? = null
 
@@ -59,12 +61,13 @@ class MainService : Service() {
 			Log.i(TAG, "Creating virtual display")
 			val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 			val projection = projectionManager.getMediaProjection(RESULT_OK, Data.projectionPermission)
-			Data.projectionPermission = null
-			val imageCapture = ImageReader.newInstance(720, 440, 1, 1)
+
+			val imageCapture = ImageReader.newInstance(720, 440, 1, 2)
 			val flags = DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR or DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION
 			val virtualDisplay = projection.createVirtualDisplay("idrive-screen-mirror", imageCapture.width, imageCapture.height, 140, flags, imageCapture.surface, null, null)
 			synchronized(MainService::class.java) {
 				Log.i(TAG, "Starting mirroring thread, using VirtualDisplay $virtualDisplay")
+				this.projection = projection
 				this.imageCapture = imageCapture
 				this.virtualDisplay = virtualDisplay
 				startNotification()
@@ -121,6 +124,9 @@ class MainService : Service() {
 			backgroundThread?.connected = false
 		}
 		backgroundThread = null
+
+		projection?.stop()
+
 	}
 
 	private var orientationChanger: LinearLayout? = null

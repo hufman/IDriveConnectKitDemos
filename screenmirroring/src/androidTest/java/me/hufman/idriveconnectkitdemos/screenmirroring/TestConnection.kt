@@ -9,11 +9,13 @@ import android.support.test.uiautomator.UiDevice
 import android.support.test.uiautomator.Until
 
 import com.bmwgroup.connected.car.app.BrandType
+import de.bmw.idrive.BMWRemotingClient
 import me.hufman.idriveconnectionkit.IDriveConnection
 import me.hufman.idriveconnectionkit.android.CarAPIClient
 import me.hufman.idriveconnectionkit.android.CarAPIDiscovery
 import me.hufman.idriveconnectionkit.android.IDriveConnectionListener
 import org.awaitility.Awaitility.await
+import org.awaitility.Duration
 
 import org.junit.After
 import org.junit.Test
@@ -26,6 +28,10 @@ import java.util.concurrent.TimeUnit
 
 import org.mockito.Mockito.*
 import java.util.concurrent.CountDownLatch
+import android.support.test.uiautomator.UiSelector
+import android.support.test.uiautomator.Until.findObject
+import me.hufman.idriveconnectionkit.android.SecurityService
+
 
 // perhaps follow example in https://android.googlesource.com/platform/cts/+/master/tests/tests/view/src/android/view/cts/surfacevalidator/CapturedActivity.java
 /**
@@ -53,6 +59,12 @@ class TestConnection {
 		CarAPIDiscovery.callback = null
 		CarAPIDiscovery.discoveredApps.clear()
 		IDriveConnectionListener.reset()
+		val appContext = InstrumentationRegistry.getTargetContext()
+		SecurityService.securityConnections.values.forEach {
+			try {
+				appContext.unbindService(it)
+			} catch (e: Exception) {}
+		}
 	}
 
 	@Test
@@ -143,8 +155,47 @@ class TestConnection {
 		val acceptButton = uiDevice.wait(Until.findObject(By.res(ACCEPT_RESOURCE_ID)), 20000)
 		assertNotNull(acceptButton)
 		acceptButton.click()
-		await().atMost(10, TimeUnit.SECONDS).until { Data.projectionPermission != null }
+		await().atMost(Duration.TEN_SECONDS).until { Data.projectionPermission != null }
 		assertNotNull(Data.projectionPermission)
 
+		// then the user "navigates" to the screen mirroring app in the car
+		mockServer.waitForApp.await(10, TimeUnit.SECONDS)
+		val mockClient = IDriveConnection.mockRemotingClient as BMWRemotingClient
+		assertFalse(Data.carappFocused)
+		mockClient.rhmi_onHmiEvent(1, "test app", 40, 11, mapOf(23.toByte() to true))   // app became visible in the car
+		assertTrue(Data.carappFocused)
+		try {
+			// check for the Screen Mirroring notification to show up
+			uiDevice.openNotification()
+			uiDevice.wait(Until.hasObject(By.text("IDrive Demo")), 10000)
+			val title = uiDevice.findObject(By.text("IDrive Demo"))
+			assertNotNull(title)
+		} finally {
+			uiDevice.pressBack()
+		}
+		// test that some frames have been sent
+		await().atMost(Duration.TEN_SECONDS).until { mockServer.numFrames > 0 }
+		// user hides app
+		mockClient.rhmi_onHmiEvent(1, "test app", 40, 11, mapOf(23.toByte() to false))   // app became visible in the car
+		assertFalse(Data.carappFocused)
+		uiDevice.wait(Until.gone(By.text("IDrive Demo")), 10000)
+		val pausedFrameCount = mockServer.numFrames
+		Thread.sleep(5000)
+		assertEquals("No new mirror frames were sent", pausedFrameCount, mockServer.numFrames)
+
+		// now try showing the app again, it shouldn't reprompt
+		mockClient.rhmi_onHmiEvent(1, "test app", 40, 11, mapOf(23.toByte() to true))   // app became visible in the car
+		assertTrue(Data.carappFocused)
+		try {
+			// check for the Screen Mirroring notification to show up
+			uiDevice.openNotification()
+			uiDevice.wait(Until.hasObject(By.text("IDrive Demo")), 10000)
+			val title = uiDevice.findObject(By.text("IDrive Demo"))
+			assertNotNull(title)
+		} finally {
+			uiDevice.pressBack()
+		}
+		// test that some frames have been sent
+		await().atMost(Duration.TEN_SECONDS).until { mockServer.numFrames > pausedFrameCount }
 	}
 }

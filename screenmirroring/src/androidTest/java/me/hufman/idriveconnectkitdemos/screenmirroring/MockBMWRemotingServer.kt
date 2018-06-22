@@ -2,11 +2,11 @@ package me.hufman.idriveconnectkitdemos.screenmirroring
 
 import de.bmw.idrive.BMWRemoting
 import de.bmw.idrive.BaseBMWRemotingServer
-import java.util.*
 import java.util.concurrent.CountDownLatch
 
 open class MockBMWRemotingServer: BaseBMWRemotingServer() {
 	val waitForLogin = CountDownLatch(1)
+	val waitForApp = CountDownLatch(1)
 	var numFrames = 0
 
 	override fun sas_certificate(data: ByteArray?): ByteArray {
@@ -22,7 +22,7 @@ open class MockBMWRemotingServer: BaseBMWRemotingServer() {
 	}
 
 	override fun rhmi_initialize(handle: Int?) {
-
+		waitForApp.countDown()
 	}
 
 	override fun rhmi_setResource(handle: Int?, data: ByteArray?, type: BMWRemoting.RHMIResourceType?) {
@@ -42,7 +42,7 @@ open class MockBMWRemotingServer: BaseBMWRemotingServer() {
 	}
 
 	override fun rhmi_setData(handle: Int?, modelId: Int?, value: Any?) {
-		if (modelId == 64)
+		if (modelId == 62)
 			numFrames += 1
 	}
 

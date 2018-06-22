@@ -143,9 +143,9 @@ class MainActivity : Activity() {
 		}
 	}
 
-	override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent) {
+	override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
 		if (requestCode == PROJECTION_PERMISSION_CODE) {
-			if (resultCode == Activity.RESULT_OK) {
+			if (resultCode == Activity.RESULT_OK && data != null) {
 				Log.i(TAG, "User granted screenshot access main dialog")
 				Data.projectionPermission = data.clone() as Intent
 
@@ -243,7 +243,6 @@ class MainActivity : Activity() {
 				car.rhmi_addActionEventHandler(rhmiHandle, "Callback method", -1)
 				car.rhmi_setResource(rhmiHandle, uilayout, BMWRemoting.RHMIResourceType.DESCRIPTION)
 				car.rhmi_setResource(rhmiHandle, iconpack, BMWRemoting.RHMIResourceType.IMAGEDB)
-				car.rhmi_initialize(rhmiHandle)
 
 				// set up the RHMI App
 				val rhmiApp = RHMIApplicationEtch(car, rhmiHandle)
@@ -266,6 +265,8 @@ class MainActivity : Activity() {
 				Data.mirroringWindow = state
 				Data.mirroringAppImage = imageComponent
 
+				// actually show the app in the car
+				car.rhmi_initialize(rhmiHandle)
 			} catch (e: Exception) {
 				reportError(e)
 			}
