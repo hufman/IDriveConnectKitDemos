@@ -10,5 +10,6 @@ object Data {
 	@Volatile var mirroringApp: RHMIApplication? = null
 	@Volatile var mirroringWindow: RHMIState? = null
 	@Volatile var mirroringAppImage: RHMIComponent.Image? = null
+	@Volatile var carApp: CarApp? = null
 	@Volatile var carappFocused = false
 }

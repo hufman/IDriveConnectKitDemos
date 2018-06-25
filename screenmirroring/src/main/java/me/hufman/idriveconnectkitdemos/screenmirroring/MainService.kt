@@ -5,20 +5,14 @@ import android.app.Notification
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ActivityInfo
+import android.content.Intent.*
 import android.os.IBinder
 import android.util.Log
-import android.graphics.ImageFormat
-import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
-import android.provider.Settings
-import android.view.View
-import android.view.WindowManager
-import android.widget.LinearLayout
 
 
 class MainService : Service() {
@@ -57,37 +51,43 @@ class MainService : Service() {
 	 * Start the service
 	 */
 	private fun handleActionStart() {
+		if (Data.carApp == null) {
+			Log.i(TAG, "Initializing screenmirroring car app")
+			val carApp = CarApp(this)
+			Data.carApp = carApp
+			carApp.createCarApp()
+		}
 		if (Data.projectionPermission != null) {
-			Log.i(TAG, "Creating virtual display")
-			val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-			val projection = projectionManager.getMediaProjection(RESULT_OK, Data.projectionPermission)
-
-			val imageCapture = ImageReader.newInstance(720, 440, 1, 2)
-			val flags = DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR or DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION
-			val virtualDisplay = projection.createVirtualDisplay("idrive-screen-mirror", imageCapture.width, imageCapture.height, 140, flags, imageCapture.surface, null, null)
-			synchronized(MainService::class.java) {
-				Log.i(TAG, "Starting mirroring thread, using VirtualDisplay $virtualDisplay")
-				this.projection = projection
-				this.imageCapture = imageCapture
-				this.virtualDisplay = virtualDisplay
+			Log.i(TAG, "Still have screenmirroring permission from before")
+			if (Data.carappFocused) {
+				Log.i(TAG, "Carapp is focused, beginning to send data")
 				startNotification()
 				startThread()
+			} else {
+				Log.e(TAG, "Carapp is not focused, not starting to send data")
 			}
 		} else {
 			Log.e(TAG, "Screen mirroring permission not granted")
-			Data.projectionPermission = null
+			promptForMirroringPermission()
 		}
 	}
 
 	/**
-	 * Handle action Baz in the provided background thread with the provided
-	 * parameters.
+	 * Stop the service
 	 */
 	private fun handleActionStop() {
 		Log.i(TAG, "Shutting down mirroring service")
 		synchronized(MainService::class.java) {
 			stopThread()
 			stopNotification()
+		}
+	}
+
+	fun promptForMirroringPermission() {
+		if (Data.projectionPermission != null) {
+			Log.w(TAG, "Should we prompt again, if we already have permission?")
+		} else {
+			this.startActivity(Intent(this, PermissionDialog::class.java).setAction(PermissionDialog.REQUEST_RECORDING).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 		}
 	}
 
@@ -104,10 +104,19 @@ class MainService : Service() {
 
 	private fun startThread() {
 		if (backgroundThread == null) {
-			val imageCapture = this.imageCapture
+			Log.i(TAG, "Creating virtual display")
+			val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+			val projection = projectionManager.getMediaProjection(RESULT_OK, Data.projectionPermission)
+			this.projection = projection
+
+			val imageCapture = ImageReader.newInstance(720, 440, 1, 2)
+			val flags = DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR or DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION
+			val virtualDisplay = projection.createVirtualDisplay("idrive-screen-mirror", imageCapture.width, imageCapture.height, 140, flags, imageCapture.surface, null, null)
+
 			var imageModel = Data.mirroringAppImage?.getModel()?.asRaImageModel()
 			if (imageCapture != null && imageModel != null) {
-				backgroundThread = ScreenMirroringThread(imageCapture, imageModel)
+				Log.i(TAG, "Starting mirroring thread, using VirtualDisplay $virtualDisplay")
+				this.backgroundThread = ScreenMirroringThread(this, imageCapture, imageModel)
 				Thread(backgroundThread).start()
 			} else {
 				Log.e(TAG, "Error loading imageCapture and carappImage components")
@@ -116,40 +125,17 @@ class MainService : Service() {
 	}
 
 	private fun stopNotification() {
+		Log.i(TAG, "Hiding foreground notification")
 		stopForeground(true)
 	}
 
 	private fun stopThread() {
+		Log.i(TAG, "Shutting down screenmirroring thread")
 		if (backgroundThread != null) {
 			backgroundThread?.connected = false
 		}
 		backgroundThread = null
 
 		projection?.stop()
-
 	}
-
-	private var orientationChanger: LinearLayout? = null
-
-	/**
-	private fun disableRotation() {
-		if (Settings.canDrawOverlays(this)) {
-			orientationChanger = LinearLayout(this)
-			val orientationLayout = WindowManager.LayoutParams(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, 0, PixelFormat.RGBA_8888)
-			orientationLayout.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-
-			val windowManager = getSystemService(Service.WINDOW_SERVICE) as WindowManager
-			windowManager.addView(orientationChanger, orientationLayout)
-			orientationChanger?.visibility = View.VISIBLE
-		}
-	}
-
-	private fun restoreRotation() {
-		if (orientationChanger != null) {
-			val windowManager = getSystemService(Service.WINDOW_SERVICE) as WindowManager
-			windowManager.removeView(orientationChanger)
-			orientationChanger = null
-		}
-	}
-	 */
 }

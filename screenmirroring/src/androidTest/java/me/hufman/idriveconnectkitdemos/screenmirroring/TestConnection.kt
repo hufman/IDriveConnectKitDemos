@@ -65,6 +65,8 @@ class TestConnection {
 				appContext.unbindService(it)
 			} catch (e: Exception) {}
 		}
+		val uiDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+		uiDevice.pressBack()
 	}
 
 	@Test
@@ -127,6 +129,9 @@ class TestConnection {
 	@Test
 	fun testConnection() {
 		/* Test that we connect to the car */
+		/* For some reason, SecurityService objects to being run multiple times in the same process
+		   and so we have one big giant test :/
+		*/
 		// Context of the app under test.
 		val appContext = InstrumentationRegistry.getTargetContext()
 		val mockServer = spy(MockBMWRemotingServer())
@@ -136,7 +141,6 @@ class TestConnection {
 		CarAPIDiscovery.discoveredApps["me.hufman.idriveconnectkitdemos.test_app"] = MockCarApiApp()
 
 		// start the app
-		val activity = activityMatcher.activity
 		val intent = Intent("com.bmwgroup.connected.accessory.ACTION_CAR_ACCESSORY_ATTACHED")
 		intent.putExtra("EXTRA_BRAND", "mini")
 		intent.putExtra("EXTRA_HOST", "127.0.0.1")
@@ -148,36 +152,43 @@ class TestConnection {
 		mockServer.waitForLogin.await(20, TimeUnit.SECONDS)
 		verify(mockServer).sas_certificate(ArgumentMatchers.any(ByteArray::class.java))
 		verify(mockServer).sas_login(ArgumentMatchers.any(ByteArray::class.java))
+		val mockClient = IDriveConnection.mockRemotingClient as BMWRemotingClient
 
 		// check for the permission dialog
 		val ACCEPT_RESOURCE_ID = "android:id/button1"
 		val uiDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
 		val acceptButton = uiDevice.wait(Until.findObject(By.res(ACCEPT_RESOURCE_ID)), 20000)
-		assertNotNull(acceptButton)
+		assertNotNull("should find Screen Recording permission button", acceptButton)
 		acceptButton.click()
 		await().atMost(Duration.TEN_SECONDS).until { Data.projectionPermission != null }
-		assertNotNull(Data.projectionPermission)
+
+		// what happens if the main activity gets recreated? it shouldn't reconnect
+		val mockServer2 = spy(MockBMWRemotingServer())
+		IDriveConnection.mockRemotingServer = mockServer2
+		IDriveConnection.mockRemotingServer
+		activityMatcher.finishActivity()
+		activityMatcher.launchActivity(null)
+		mockServer2.waitForLogin.await(5, TimeUnit.SECONDS)
+		assertEquals("should not make a new connection", mockClient, IDriveConnection.mockRemotingClient)
 
 		// then the user "navigates" to the screen mirroring app in the car
 		mockServer.waitForApp.await(10, TimeUnit.SECONDS)
-		val mockClient = IDriveConnection.mockRemotingClient as BMWRemotingClient
-		assertFalse(Data.carappFocused)
+		assertFalse("should believe the carapp is not focused to start with", Data.carappFocused)
 		mockClient.rhmi_onHmiEvent(1, "test app", 40, 11, mapOf(23.toByte() to true))   // app became visible in the car
-		assertTrue(Data.carappFocused)
-		try {
-			// check for the Screen Mirroring notification to show up
-			uiDevice.openNotification()
-			uiDevice.wait(Until.hasObject(By.text("IDrive Demo")), 10000)
-			val title = uiDevice.findObject(By.text("IDrive Demo"))
-			assertNotNull(title)
-		} finally {
-			uiDevice.pressBack()
-		}
+		assertTrue("should notice that the carapp is now focused", Data.carappFocused)
+
+		// check for the Screen Mirroring notification to show up
+		uiDevice.openNotification()
+		uiDevice.wait(Until.hasObject(By.text("IDrive Demo")), 15000)
+		val title = uiDevice.findObject(By.text("IDrive Demo"))
+		assertNotNull("should show IDrive Demo notification", title)
+
 		// test that some frames have been sent
 		await().atMost(Duration.TEN_SECONDS).until { mockServer.numFrames > 0 }
+
 		// user hides app
 		mockClient.rhmi_onHmiEvent(1, "test app", 40, 11, mapOf(23.toByte() to false))   // app became visible in the car
-		assertFalse(Data.carappFocused)
+		assertFalse("should notice that the carapp is now unfocused", Data.carappFocused)
 		uiDevice.wait(Until.gone(By.text("IDrive Demo")), 10000)
 		val pausedFrameCount = mockServer.numFrames
 		Thread.sleep(5000)
@@ -185,17 +196,19 @@ class TestConnection {
 
 		// now try showing the app again, it shouldn't reprompt
 		mockClient.rhmi_onHmiEvent(1, "test app", 40, 11, mapOf(23.toByte() to true))   // app became visible in the car
-		assertTrue(Data.carappFocused)
-		try {
-			// check for the Screen Mirroring notification to show up
-			uiDevice.openNotification()
-			uiDevice.wait(Until.hasObject(By.text("IDrive Demo")), 10000)
-			val title = uiDevice.findObject(By.text("IDrive Demo"))
-			assertNotNull(title)
-		} finally {
-			uiDevice.pressBack()
-		}
+		assertTrue("should notice that the carapp is now focused again", Data.carappFocused)
+
+		// check for the Screen Mirroring notification to show up
+		uiDevice.openNotification()
+		uiDevice.wait(Until.hasObject(By.text("IDrive Demo")), 15000)
+		val title2 = uiDevice.findObject(By.text("IDrive Demo"))
+		assertNotNull("should show IDrive Demo notification", title2)
 		// test that some frames have been sent
 		await().atMost(Duration.TEN_SECONDS).until { mockServer.numFrames > pausedFrameCount }
+		// now the car has been turned off
+		mockServer.disconnect()
+		// make sure everything is cleaned up
+		uiDevice.wait(Until.gone(By.text("IDrive Demo")), 10000)
+		await().atMost(30, TimeUnit.SECONDS).until {Data.carApp == null }
 	}
 }

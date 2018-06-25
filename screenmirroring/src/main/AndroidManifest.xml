@@ -16,6 +16,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name="me.hufman.idriveconnectkitdemos.screenmirroring.PermissionDialog"
+            android:theme="@android:style/Theme.Dialog"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            />
         <service
             android:name=".MainService"
             android:exported="false"></service>

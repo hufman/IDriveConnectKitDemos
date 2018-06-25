@@ -1,5 +1,7 @@
 package me.hufman.idriveconnectkitdemos.screenmirroring
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.media.Image
@@ -9,7 +11,7 @@ import me.hufman.idriveconnectionkit.rhmi.RHMIModel
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Semaphore
 
-class ScreenMirroringThread(val source: ImageReader, val carImage: RHMIModel.RaImageModel) : Runnable {
+class ScreenMirroringThread(val context: Context, val source: ImageReader, val carImage: RHMIModel.RaImageModel) : Runnable {
 	var paused = false
 		set(value) {
 			field = value
@@ -36,6 +38,17 @@ class ScreenMirroringThread(val source: ImageReader, val carImage: RHMIModel.RaI
 	}
 
 	override fun run() {
+		try {
+			sendScreen()
+		} catch (e: Exception) {
+			Log.e(TAG, "Error while sending screen to the car!", e)
+			Data.carApp = null
+		} finally {
+			context.startService(Intent(context, MainService::class.java).setAction(MainService.ACTION_STOP))
+		}
+	}
+
+	fun sendScreen() {
 		var bmp: Bitmap? = null
 		while (connected) {
 			//ready.acquire()  // block until we're ready to show another frame

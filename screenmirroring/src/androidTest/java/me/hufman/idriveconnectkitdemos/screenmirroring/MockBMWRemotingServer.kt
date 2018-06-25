@@ -8,6 +8,11 @@ open class MockBMWRemotingServer: BaseBMWRemotingServer() {
 	val waitForLogin = CountDownLatch(1)
 	val waitForApp = CountDownLatch(1)
 	var numFrames = 0
+	var disconnected = false
+
+	fun disconnect() {
+		disconnected = true
+	}
 
 	override fun sas_certificate(data: ByteArray?): ByteArray {
 		return ByteArray(16)
@@ -42,6 +47,7 @@ open class MockBMWRemotingServer: BaseBMWRemotingServer() {
 	}
 
 	override fun rhmi_setData(handle: Int?, modelId: Int?, value: Any?) {
+		if (disconnected) throw Exception("Disconnected")
 		if (modelId == 62)
 			numFrames += 1
 	}
