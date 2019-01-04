@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Audio Testing</string>
+    <string name="action_settings">Settings</string>
+    <string name="notification_title">Idrive Audio Testing</string>
+</resources>
